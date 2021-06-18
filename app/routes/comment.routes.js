@@ -1,4 +1,5 @@
 module.exports = (app) => {
+  const passport = require("passport");
   const comments = require("../controllers/comment.controller.js");
 
   var router = require("express").Router();
@@ -24,5 +25,9 @@ module.exports = (app) => {
   // Delete all Comments
   router.delete("/", comments.deleteAll);
 
-  app.use("/api/comments", router);
+  app.use(
+    "/api/comments",
+    passport.authenticate("jwt", { session: false }),
+    router
+  );
 };

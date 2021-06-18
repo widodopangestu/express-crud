@@ -17,12 +17,17 @@ app.use(express.urlencoded({ extended: true }));
 
 const db = require("./app/models");
 db.sequelize.sync();
-
+// db.sequelize.sync({ force: true }).then(() => {
+//   console.log("Drop and re-sync db.");
+// });
 // simple route
 app.get("/", (req, res) => {
   res.json({ message: "Welcome to widodopangestu application." });
 });
+require("./app/auth/auth");
 
+require("./app/routes/auth.routes")(app);
+require("./app/routes/user.routes")(app);
 require("./app/routes/turorial.routes")(app);
 require("./app/routes/comment.routes")(app);
 
