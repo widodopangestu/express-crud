@@ -1,10 +1,25 @@
 module.exports = (sequelize, Sequelize) => {
   const bcrypt = require("bcrypt");
   const User = sequelize.define("user", {
-    first_name: {
+    nama_lengkap: {
+      type: Sequelize.STRING(150),
+      allowNull: false,
+    },
+    alamat_lengkap: {
+      type: Sequelize.TEXT,
+    },
+    jenis_identitas: {
+      type: Sequelize.ENUM("KTP", "SIM", "PASPOR"),
+      allowNull: false,
+    },
+    no_identitas: {
+      type: Sequelize.STRING(50),
+      allowNull: false,
+    },
+    file_identitas: {
       type: Sequelize.STRING,
     },
-    last_name: {
+    pekerjaan: {
       type: Sequelize.STRING,
     },
     email: {
@@ -12,8 +27,18 @@ module.exports = (sequelize, Sequelize) => {
       allowNull: false,
       unique: true,
     },
+    no_hp: {
+      type: Sequelize.STRING(50),
+      unique: true,
+    },
+    username: {
+      type: Sequelize.STRING(100),
+      allowNull: false,
+      unique: true,
+    },
     role: {
       type: Sequelize.ENUM("admin", "user"),
+      defaultValue: "user",
     },
     password: {
       type: Sequelize.STRING,
@@ -21,6 +46,10 @@ module.exports = (sequelize, Sequelize) => {
     },
     last_login: {
       type: Sequelize.DATE,
+    },
+    is_verified: {
+      type: Sequelize.INTEGER,
+      defaultValue: 0,
     },
   });
   User.prototype.isValidPassword = async function (password) {

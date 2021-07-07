@@ -3,7 +3,7 @@ var isBase64 = require("is-base64");
 const FileType = require("file-type");
 const fs = require("fs");
 const db = require("../models");
-const User = db.users;
+const Infografi = db.infografis;
 const Op = db.Sequelize.Op;
 
 const { body } = require("express-validator");
@@ -11,13 +11,11 @@ const { validationResult } = require("express-validator");
 
 exports.validate = (method) => {
   switch (method) {
-    case "createUser": {
+    case "createInfografi": {
       return [
-        body("nama_lengkap").exists(),
-        body("alamat_lengkap").exists(),
-        body("jenis_identitas").exists(),
-        body("no_identitas").exists(),
-        body("file_identitas")
+        body("nama").exists(),
+        body("deskripsi").exists(),
+        body("nama_file")
           .exists()
           .custom(async (value) => {
             if (!isBase64(value)) {
@@ -26,7 +24,7 @@ exports.validate = (method) => {
             const file_type = await FileType.fromBuffer(
               Buffer.from(value, "base64")
             );
-            const allowed_file = ["png", "jpg", "jpeg"];
+            const allowed_file = ["pdf", "doc", "docx"];
             allowed_file.includes(file_type.ext);
 
             console.log("file_type", file_type);
@@ -34,43 +32,18 @@ exports.validate = (method) => {
               return Promise.reject("File extension is not alowed!");
             }
           }),
-        body("pekerjaan").exists(),
-        body("email")
-          .isEmail()
-          .custom((value) => {
-            return User.findOne({ where: { email: value } }).then((user) => {
-              if (user) {
-                return Promise.reject("E-mail already in use!");
-              }
-            });
-          }),
-        body("username").custom((value) => {
-          return User.findOne({ where: { username: value } }).then((user) => {
-            if (user) {
-              return Promise.reject("Username already in use!");
-            }
-          });
-        }),
-        body("no_hp").custom((value) => {
-          return User.findOne({ where: { no_hp: value } }).then((user) => {
-            if (user) {
-              return Promise.reject("No HP already in use!");
-            }
-          });
-        }),
-        body("password").exists(),
       ];
     }
-    case "updateUser": {
+    case "updateInfografi": {
       return [
-        body("file_identitas").custom(async (value) => {
+        body("nama_file").custom(async (value) => {
           if (!isBase64(value)) {
             return Promise.reject("File is not base 64 format!");
           }
           const file_type = await FileType.fromBuffer(
             Buffer.from(value, "base64")
           );
-          const allowed_file = ["png", "jpg", "jpeg"];
+          const allowed_file = ["pdf", "doc", "docx"];
           allowed_file.includes(file_type.ext);
 
           console.log("file_type", file_type);
@@ -78,21 +51,11 @@ exports.validate = (method) => {
             return Promise.reject("File extension is not alowed!");
           }
         }),
-        body("email")
-          .isEmail()
-          .custom((value) => {
-            return User.findOne({ where: { email: value } }).then((user) => {
-              if (user) {
-                return Promise.reject("E-mail already in use!");
-              }
-            });
-          }),
-        body("password").exists(),
       ];
     }
   }
 };
-// Create and Save a new User
+// Create and Save a new Infografi
 exports.create = async (req, res) => {
   // Validate request
   const errors = validationResult(req);
@@ -102,47 +65,42 @@ exports.create = async (req, res) => {
     return;
   }
   const file_type = await FileType.fromBuffer(
-    Buffer.from(req.body.file_identitas, "base64")
+    Buffer.from(req.body.nama_file, "base64")
   );
-  let file_name = Math.floor(Date.now() / 1000) + "." + file_type.ext;
-  let b = Buffer.from(req.body.file_identitas, "base64");
+  let file_name = `${Math.floor(Date.now() / 1000)}.${file_type.ext}`;
+  let b = Buffer.from(req.body.nama_file, "base64");
   fs.writeFile("public/uploads/" + file_name, b, function (err) {
     if (!err) {
       console.log("file is created");
     }
   });
 
-  const user = {
-    nama_lengkap: req.body.nama_lengkap,
-    alamat_lengkap: req.body.alamat_lengkap,
-    jenis_identitas: req.body.jenis_identitas,
-    no_identitas: req.body.no_identitas,
-    file_identitas: file_name,
-    pekerjaan: req.body.pekerjaan,
-    email: req.body.email,
-    no_hp: req.body.no_hp,
-    username: req.body.username,
-    password: req.body.password,
+  // Create a Infografi
+  const infografi = {
+    nama: req.body.nama,
+    deskripsi: req.body.deskripsi,
+    nama_file: file_name,
   };
 
-  // Save User in the database
-  User.create(user)
+  // Save Infografi in the database
+  Infografi.create(infografi)
     .then((data) => {
       res.send(data);
     })
     .catch((err) => {
       res.status(500).send({
-        message: err.message || "Some error occurred while creating the User.",
+        message:
+          err.message || "Some error occurred while creating the Infografi.",
       });
     });
 };
 
-// Retrieve all Users from the database.
+// Retrieve all Infografis from the database.
 exports.findAll = (req, res) => {
-  const email = req.query.email;
-  var condition = email ? { email: { [Op.like]: `%${email}%` } } : null;
+  const nama = req.query.nama;
+  var condition = nama ? { nama: { [Op.like]: `%${nama}%` } } : null;
 
-  User.findAndCountAll({
+  Infografi.findAndCountAll({
     where: condition,
     limit: req.query.limit,
     offset: req.skip,
@@ -164,11 +122,11 @@ exports.findAll = (req, res) => {
     });
 };
 
-// Find a single User with an id
+// Find a single Infografi with an id
 exports.findOne = (req, res) => {
   const id = req.params.id;
 
-  User.findByPk(id)
+  Infografi.findByPk(id)
     .then((data) => {
       if (data == null) {
         res.status(404).send({
@@ -180,101 +138,104 @@ exports.findOne = (req, res) => {
     })
     .catch((err) => {
       res.status(500).send({
-        message: "Error retrieving User with id=" + id,
+        message: "Error retrieving Infografi with id=" + id,
       });
     });
 };
 
-// Update a User by the id in the request
+// Update a Infografi by the id in the request
 exports.update = async (req, res) => {
   const id = req.params.id;
-
-  let user = req.body;
-  if (req.body.hasOwnProperty("file_identitas")) {
+  // Create a Infografi
+  let infografi = req.body;
+  if (req.body.hasOwnProperty("nama_file")) {
     const file_type = await FileType.fromBuffer(
-      Buffer.from(req.body.file_identitas, "base64")
+      Buffer.from(req.body.nama_file, "base64")
     );
-    let file_name = Math.floor(Date.now() / 1000) + "." + file_type.ext;
-    let b = Buffer.from(req.body.file_identitas, "base64");
+    let file_name = `${Math.floor(Date.now() / 1000)}.${file_type.ext}`;
+    let b = Buffer.from(req.body.nama_file, "base64");
     fs.writeFile("public/uploads/" + file_name, b, function (err) {
       if (!err) {
         console.log("file is created");
       }
     });
 
-    user["file_identitas"] = file_name;
+    infografi["nama_file"] = file_name;
   }
-  User.update(user, {
+  Infografi.update(infografi, {
     where: { id: id },
   })
     .then((num) => {
       if (num == 1) {
         res.send({
-          message: "User was updated successfully.",
+          message: "Infografi was updated successfully.",
         });
       } else {
         res.send({
-          message: `Cannot update User with id=${id}. Maybe User was not found or req.body is empty!`,
+          message: `Cannot update Infografi with id=${id}. Maybe Infografi was not found or req.body is empty!`,
         });
       }
     })
     .catch((err) => {
       res.status(500).send({
-        message: "Error updating User with id=" + id,
+        message: "Error updating Infografi with id=" + id,
       });
     });
 };
 
-// Delete a User with the specified id in the request
+// Delete a Infografi with the specified id in the request
 exports.delete = (req, res) => {
   const id = req.params.id;
 
-  User.destroy({
+  Infografi.destroy({
     where: { id: id },
   })
     .then((num) => {
       if (num == 1) {
         res.send({
-          message: "User was deleted successfully!",
+          message: "Infografi was deleted successfully!",
         });
       } else {
         res.send({
-          message: `Cannot delete User with id=${id}. Maybe User was not found!`,
+          message: `Cannot delete Infografi with id=${id}. Maybe Infografi was not found!`,
         });
       }
     })
     .catch((err) => {
       res.status(500).send({
-        message: "Could not delete User with id=" + id,
+        message: "Could not delete Infografi with id=" + id,
       });
     });
 };
 
-// Delete all Users from the database.
+// Delete all Infografis from the database.
 exports.deleteAll = (req, res) => {
-  User.destroy({
+  Infografi.destroy({
     where: {},
     truncate: false,
   })
     .then((nums) => {
-      res.send({ message: `${nums} Users were deleted successfully!` });
+      res.send({ message: `${nums} Infografis were deleted successfully!` });
     })
     .catch((err) => {
       res.status(500).send({
-        message: err.message || "Some error occurred while removing all users.",
+        message:
+          err.message || "Some error occurred while removing all infografis.",
       });
     });
 };
 
-// Find all published Users
-exports.findAllPublished = (req, res) => {
-  User.findAll({ where: { published: true } })
+// Find all published Infografis
+exports.findAllByTutorial = (req, res) => {
+  const tutorialId = req.params.tutorialId;
+  Infografi.findAll({ where: { tutorialId: tutorialId } })
     .then((data) => {
       res.send(data);
     })
     .catch((err) => {
       res.status(500).send({
-        message: err.message || "Some error occurred while retrieving users.",
+        message:
+          err.message || "Some error occurred while retrieving infografis.",
       });
     });
 };

@@ -2,27 +2,21 @@ module.exports = (app) => {
   const passport = require("passport");
   const jwt = require("jsonwebtoken");
   var router = require("express").Router();
-  const accessTokenSecret = "TOP_SECRET";
-  const refreshTokenSecret = "TOP_SECRET";
+
+  const auths = require("../controllers/auth.controller.js");
+  const accessTokenSecret = process.env.JWT_SECRET;
+  const refreshTokenSecret = process.env.JWT_SECRET;
   var refreshTokens = [];
 
-  router.post(
-    "/signup",
-    passport.authenticate("signup", { session: false }),
-    async (req, res, next) => {
-      res.json({
-        message: "Signup successful",
-        user: req.user,
-      });
-    }
-  );
+  router.post("/signup", auths.validate("signup"), auths.signup);
 
   router.post("/login", async (req, res, next) => {
     passport.authenticate("login", async (err, user, info) => {
       try {
+        console.log("hshshsh", err);
         if (err || !user) {
-          const error = new Error("An error occurred.");
-
+          const error = err ? err : new Error("An error occurred.");
+          console.log("hshshsh", error.message);
           return next(error);
         }
 

@@ -4,25 +4,7 @@ const JWTstrategy = require("passport-jwt").Strategy;
 const ExtractJWT = require("passport-jwt").ExtractJwt;
 const db = require("../models");
 const User = db.users;
-
-passport.use(
-  "signup",
-  new localStrategy(
-    {
-      usernameField: "email",
-      passwordField: "password",
-    },
-    async (email, password, done) => {
-      try {
-        const user = await User.create({ email, password });
-
-        return done(null, user);
-      } catch (error) {
-        done(error);
-      }
-    }
-  )
-);
+const { Op } = require("sequelize");
 
 passport.use(
   "login",
@@ -33,17 +15,25 @@ passport.use(
     },
     async (email, password, done) => {
       try {
-        User.findOne({ where: { email: email } }).then(function (user) {
-          console.log("user", user);
-          if (!user) {
-            return done(null, false, { message: "User not found" });
-          } else if (!user.isValidPassword(password)) {
-            return done(null, false, { message: "Wrong Password" });
-          } else {
-            return done(null, user, { message: "Logged in Successfully" });
-          }
+        const user = await User.findOne({
+          where: {
+            [Op.or]: [{ email: email }, { username: email }],
+          },
         });
+        console.log(user);
+        if (!user) {
+          return done(new Error("User not found."), false);
+        }
+        isValid = await user.isValidPassword(password);
+        if (!isValid) {
+          return done(new Error("Wrong Password."), false);
+        }
+        if (user && !user.is_verified) {
+          return done(new Error("User is not verified."), false);
+        }
+        return done(null, user);
       } catch (error) {
+        console.log("ke sini error", user);
         return done(error);
       }
     }
@@ -53,7 +43,7 @@ passport.use(
 passport.use(
   new JWTstrategy(
     {
-      secretOrKey: "TOP_SECRET",
+      secretOrKey: process.env.JWT_SECRET,
       jwtFromRequest: ExtractJWT.fromAuthHeaderAsBearerToken(),
     },
     async (token, done) => {
